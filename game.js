@@ -291,7 +291,7 @@ function renderBoard() {
         cell.classList.add("revealed");
       }
       if (found.has(word)) {
-        makeSpeakable(cell, word, "en-US", `Say ${word}`);
+        makeSpeakable(cell, word, "en-US", `Say ${word}`, simpleSentenceForWord(word));
       }
       cells.appendChild(cell);
     }
@@ -303,7 +303,7 @@ function renderBoard() {
     const meaningText = found.has(word) ? meaningForWord(word) : "";
     meaning.textContent = meaningText;
     if (meaningText) {
-      makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`);
+      makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`, simpleSentenceForMeaning(meaningText));
     }
     meaning.setAttribute("aria-hidden", found.has(word) ? "false" : "true");
     row.appendChild(meaning);
@@ -489,22 +489,35 @@ function setMessage(text) {
   layoutGame();
 }
 
-function makeSpeakable(element, text, language, label) {
+function makeSpeakable(element, text, language, label, sentence) {
   element.classList.add("speakable");
   element.setAttribute("role", "button");
   element.setAttribute("tabindex", "0");
-  element.setAttribute("aria-label", label);
-  element.title = label;
+  element.setAttribute("aria-label", `${label}. Double click for a simple sentence.`);
+  element.title = `${label}. Double click for a simple sentence.`;
   element.addEventListener("click", () => speakText(text, language));
+  element.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    showSimpleSentence(sentence, language);
+  });
   element.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       speakText(text, language);
     }
+    if (event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      showSimpleSentence(sentence, language);
+    }
   });
 }
 
-function speakText(text, language) {
+function showSimpleSentence(sentence, language) {
+  setMessage(sentence);
+  speakText(sentence, language, false);
+}
+
+function speakText(text, language, showStatus = true) {
   if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
     setMessage("Pronunciation is not available in this browser.");
     return;
@@ -515,7 +528,17 @@ function speakText(text, language) {
   utterance.lang = language;
   utterance.rate = language === "zh-CN" ? 0.82 : 0.9;
   window.speechSynthesis.speak(utterance);
-  setMessage(`Pronouncing ${text}.`);
+  if (showStatus) {
+    setMessage(`Pronouncing ${text}.`);
+  }
+}
+
+function simpleSentenceForWord(word) {
+  return `I know the word ${word.toLowerCase()}.`;
+}
+
+function simpleSentenceForMeaning(meaning) {
+  return `\u6211\u77e5\u9053\u201c${meaning}\u201d\u8fd9\u4e2a\u8bcd\u3002`;
 }
 
 function meaningForWord(word) {
