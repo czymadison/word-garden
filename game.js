@@ -1,4 +1,5 @@
 const TOTAL_PUZZLES = 100000;
+const STARTING_COINS = 10000;
 const GAME_STATE_KEY = "wordGardenGameState";
 const LEGACY_COMPLETED_PUZZLES_KEY = "wordGardenCompletedPuzzles";
 
@@ -653,7 +654,7 @@ function loadGameState() {
   const fallback = {
     currentPuzzleId: fallbackCurrentId,
     currentLetters: createInitialLetters(fallbackCurrentId),
-    coins: 25,
+    coins: STARTING_COINS,
     foundWords: [],
     revealedLetters: {},
     isGameComplete: fallbackCurrentId >= TOTAL_PUZZLES
@@ -674,7 +675,7 @@ function loadGameState() {
     return {
       currentPuzzleId: currentId,
       currentLetters: letters,
-      coins: Number.isInteger(parsed.coins) ? parsed.coins : 25,
+      coins: Number.isInteger(parsed.coins) ? Math.max(parsed.coins, STARTING_COINS) : STARTING_COINS,
       foundWords: validWordsForPuzzle(parsed.foundWords, puzzle),
       revealedLetters: validRevealedLetters(parsed.revealedLetters, puzzle),
       isGameComplete: currentId >= TOTAL_PUZZLES
