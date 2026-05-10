@@ -289,6 +289,9 @@ function renderBoard() {
         cell.textContent = word[i];
         cell.classList.add("revealed");
       }
+      if (found.has(word)) {
+        makeSpeakable(cell, word, "en-US", `Say ${word}`);
+      }
       cells.appendChild(cell);
     }
 
@@ -296,7 +299,11 @@ function renderBoard() {
 
     const meaning = document.createElement("span");
     meaning.className = "meaning";
-    meaning.textContent = found.has(word) ? meaningForWord(word) : "";
+    const meaningText = found.has(word) ? meaningForWord(word) : "";
+    meaning.textContent = meaningText;
+    if (meaningText) {
+      makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`);
+    }
     meaning.setAttribute("aria-hidden", found.has(word) ? "false" : "true");
     row.appendChild(meaning);
 
@@ -479,6 +486,35 @@ function nextPuzzle() {
 function setMessage(text) {
   message.textContent = text;
   layoutGame();
+}
+
+function makeSpeakable(element, text, language, label) {
+  element.classList.add("speakable");
+  element.setAttribute("role", "button");
+  element.setAttribute("tabindex", "0");
+  element.setAttribute("aria-label", label);
+  element.title = label;
+  element.addEventListener("click", () => speakText(text, language));
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      speakText(text, language);
+    }
+  });
+}
+
+function speakText(text, language) {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+    setMessage("Pronunciation is not available in this browser.");
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = language;
+  utterance.rate = language === "zh-CN" ? 0.82 : 0.9;
+  window.speechSynthesis.speak(utterance);
+  setMessage(`Pronouncing ${text}.`);
 }
 
 function meaningForWord(word) {

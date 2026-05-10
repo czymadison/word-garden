@@ -457,6 +457,19 @@ h1 {
   background: #eaf6ed;
 }
 
+.cell.speakable,
+.meaning.speakable {
+  cursor: pointer;
+}
+
+.cell.speakable:hover,
+.cell.speakable:focus-visible,
+.meaning.speakable:hover,
+.meaning.speakable:focus-visible {
+  outline: 2px solid rgba(47, 120, 168, 0.55);
+  outline-offset: 2px;
+}
+
 .meaning {
   min-height: calc(var(--cell-size) * 0.72);
   display: inline-grid;
