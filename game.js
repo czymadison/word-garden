@@ -25,6 +25,29 @@ const puzzleTemplates = [
   { letters: "BREEZEV", words: ["BEE", "ERE", "EVE", "ZEE", "BEER", "EVER", "BREE", "REEVE", "BREEZE"] }
 ];
 
+const puzzleThemes = [
+  "plant",
+  "stone",
+  "bright",
+  "garden",
+  "candle",
+  "market",
+  "forest",
+  "planet",
+  "stream",
+  "branch",
+  "silver",
+  "orange",
+  "castle",
+  "flower",
+  "summer",
+  "winter",
+  "spring",
+  "desert",
+  "meadow",
+  "breeze"
+];
+
 const chineseMeanings = {
   ACE: "高手",
   ACT: "行动",
@@ -215,11 +238,13 @@ window.addEventListener("resize", layoutGame);
 startPuzzle(true);
 
 function startPuzzle(preserveProgress = false) {
-  if (!currentPuzzle()) {
+  const puzzle = currentPuzzle();
+  if (!puzzle) {
     endGame();
     return;
   }
 
+  applyPuzzleTheme(puzzle.theme);
   isGameComplete = false;
   selected = [];
   if (!preserveProgress) {
@@ -540,8 +565,13 @@ function createPuzzle(id) {
   return {
     id,
     letters,
+    theme: puzzleThemes[id % puzzleThemes.length],
     words: rotateWords(template.words, id)
   };
+}
+
+function applyPuzzleTheme(theme) {
+  document.body.dataset.theme = theme || "plant";
 }
 
 function rotateWords(words, id) {
@@ -568,6 +598,7 @@ function seededRandom(seed) {
 }
 
 function endGame() {
+  applyPuzzleTheme("complete");
   isGameComplete = true;
   selected = [];
   found = new Set();
