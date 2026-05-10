@@ -1,5 +1,5 @@
 const TOTAL_PUZZLES = 100000;
-const STARTING_COINS = 10000;
+const STARTING_COINS = 1000000;
 const GAME_STATE_KEY = "wordGardenGameState";
 const LEGACY_COMPLETED_PUZZLES_KEY = "wordGardenCompletedPuzzles";
 
