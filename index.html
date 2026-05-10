@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Word Garden</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="top-bar" aria-label="Game status">
+      <div>
+        <p class="eyebrow">Puzzle <span id="level-number">1</span></p>
+        <h1>Word Garden</h1>
+      </div>
+      <div class="score-card" aria-live="polite">
+        <span>Coins</span>
+        <strong id="coins">25</strong>
+      </div>
+    </section>
+
+    <section class="board-wrap" aria-label="Word board">
+      <div id="word-board" class="word-board"></div>
+    </section>
+
+    <section class="entry-panel" aria-label="Current word">
+      <div id="current-word" class="current-word" aria-live="polite"></div>
+      <p id="message" class="message" aria-live="polite">Select letters to make a word.</p>
+    </section>
+
+    <section class="wheel-wrap" aria-label="Letter wheel">
+      <div id="letter-wheel" class="letter-wheel"></div>
+    </section>
+
+    <section class="controls" aria-label="Game controls">
+      <button id="clear-btn" type="button" title="Clear selected letters" aria-label="Clear selected letters">&times;</button>
+      <button id="shuffle-btn" type="button" title="Shuffle letters" aria-label="Shuffle letters">&#8635;</button>
+      <button id="submit-btn" type="button" class="primary" title="Submit word" aria-label="Submit word">&#10003;</button>
+      <button id="hint-btn" type="button" title="Reveal one letter" aria-label="Reveal one letter">?</button>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
