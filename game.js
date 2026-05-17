@@ -1,4 +1,8 @@
-const TOTAL_PUZZLES = 100000;
+const WORD_BANK = Array.isArray(window.WORD_GARDEN_WORDS)
+  ? window.WORD_GARDEN_WORDS.filter((word) => /^[A-Z]{3,8}$/.test(word))
+  : [];
+const TOTAL_PUZZLES = WORD_BANK.length || 100000;
+const generatedAnswerCache = new Map();
 const STARTING_COINS = 1000000;
 const GAME_STATE_KEY = "wordGardenGameState";
 const LEGACY_COMPLETED_PUZZLES_KEY = "wordGardenCompletedPuzzles";
@@ -305,7 +309,7 @@ function renderBoard() {
     if (meaningText) {
       makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`, simpleSentenceForMeaning(meaningText));
     }
-    meaning.setAttribute("aria-hidden", found.has(word) ? "false" : "true");
+    meaning.setAttribute("aria-hidden", meaningText ? "false" : "true");
     row.appendChild(meaning);
 
     board.appendChild(row);
@@ -542,7 +546,7 @@ function simpleSentenceForMeaning(meaning) {
 }
 
 function meaningForWord(word) {
-  return decodeMojibake(chineseMeanings[word]) || "\u8bcd";
+  return decodeMojibake(chineseMeanings[word]) || "";
 }
 
 function decodeMojibake(value) {
@@ -616,6 +620,7 @@ function currentPuzzle() {
 
 function createPuzzle(id) {
   if (id < 0 || id >= TOTAL_PUZZLES) return null;
+  if (WORD_BANK.length) return createWordBankPuzzle(id);
 
   const template = puzzleTemplates[id % puzzleTemplates.length];
   const letters = id === currentPuzzleId && currentLetters
@@ -628,6 +633,51 @@ function createPuzzle(id) {
     theme: puzzleThemes[id % puzzleThemes.length],
     words: rotateWords(template.words, id)
   };
+}
+
+function createWordBankPuzzle(id) {
+  const sourceWord = WORD_BANK[id % WORD_BANK.length];
+  const answers = wordsForSource(sourceWord);
+  const letters = id === currentPuzzleId && currentLetters && sameLetters(currentLetters, sourceWord)
+    ? currentLetters
+    : shuffleWithSeed(sourceWord, id + 1);
+
+  return {
+    id,
+    letters,
+    theme: puzzleThemes[id % puzzleThemes.length],
+    words: rotateWords(answers, id)
+  };
+}
+
+function wordsForSource(sourceWord) {
+  if (generatedAnswerCache.has(sourceWord)) return generatedAnswerCache.get(sourceWord);
+
+  const sourceCounts = letterCounts(sourceWord);
+  const matchingWords = WORD_BANK.filter((word) => {
+    return word.length >= 3 && word.length <= sourceWord.length && canBuildWord(word, sourceCounts);
+  });
+  const shortWords = matchingWords
+    .filter((word) => word !== sourceWord)
+    .sort((a, b) => a.length - b.length || a.localeCompare(b))
+    .slice(0, 9);
+
+  const answers = [...new Set([...shortWords, sourceWord])]
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+  generatedAnswerCache.set(sourceWord, answers);
+  return answers;
+}
+
+function canBuildWord(word, sourceCounts) {
+  const counts = letterCounts(word);
+  return Object.entries(counts).every(([letter, count]) => count <= (sourceCounts[letter] || 0));
+}
+
+function letterCounts(word) {
+  return [...word].reduce((counts, letter) => {
+    counts[letter] = (counts[letter] || 0) + 1;
+    return counts;
+  }, {});
 }
 
 function applyPuzzleTheme(theme) {
@@ -667,7 +717,7 @@ function endGame() {
   wheel.innerHTML = "";
   currentWord.textContent = "Done";
   levelNumber.textContent = TOTAL_PUZZLES;
-  setMessage("All 100000 puzzles complete. Great job!");
+  setMessage(`All ${TOTAL_PUZZLES} puzzles complete. Great job!`);
   saveGameState();
 }
 
@@ -717,11 +767,19 @@ function saveGameState() {
     revealedLetters: revealedSetsToObject(),
     isGameComplete
   }));
-  localStorage.setItem(LEGACY_COMPLETED_PUZZLES_KEY, JSON.stringify([...Array(Math.min(currentPuzzleId, puzzleTemplates.length)).keys()]));
+  localStorage.setItem(LEGACY_COMPLETED_PUZZLES_KEY, JSON.stringify([...Array(Math.min(currentPuzzleId, TOTAL_PUZZLES)).keys()]));
 }
 
 function createPuzzleForValidation(id) {
   if (id < 0 || id >= TOTAL_PUZZLES) return null;
+  if (WORD_BANK.length) {
+    const sourceWord = WORD_BANK[id % WORD_BANK.length];
+    return {
+      letters: sourceWord,
+      words: rotateWords(wordsForSource(sourceWord), id)
+    };
+  }
+
   const template = puzzleTemplates[id % puzzleTemplates.length];
   return {
     letters: template.letters,
@@ -746,7 +804,7 @@ function loadLegacyCompletedPuzzleIds() {
   try {
     const savedIds = JSON.parse(localStorage.getItem(LEGACY_COMPLETED_PUZZLES_KEY) || "[]");
     if (!Array.isArray(savedIds)) return new Set();
-    return new Set(savedIds.filter((id) => Number.isInteger(id) && id >= 0 && id < puzzleTemplates.length));
+    return new Set(savedIds.filter((id) => Number.isInteger(id) && id >= 0 && id < TOTAL_PUZZLES));
   } catch {
     return new Set();
   }
