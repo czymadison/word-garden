@@ -1,6 +1,10 @@
 const WORD_BANK = Array.isArray(window.WORD_GARDEN_WORDS)
   ? window.WORD_GARDEN_WORDS.filter((word) => /^[A-Z]{3,8}$/.test(word))
   : [];
+const ANSWER_WORD_BANK = Array.isArray(window.WORD_GARDEN_ANSWER_WORDS)
+  ? window.WORD_GARDEN_ANSWER_WORDS.filter((word) => /^[A-Z]{3,8}$/.test(word))
+  : WORD_BANK;
+const GENERATED_CHINESE_MEANINGS = window.WORD_GARDEN_MEANINGS || {};
 const TOTAL_PUZZLES = WORD_BANK.length || 100000;
 const generatedAnswerCache = new Map();
 const STARTING_COINS = 1000000;
@@ -546,7 +550,7 @@ function simpleSentenceForMeaning(meaning) {
 }
 
 function meaningForWord(word) {
-  return decodeMojibake(chineseMeanings[word]) || "";
+  return GENERATED_CHINESE_MEANINGS[word] || decodeMojibake(chineseMeanings[word]) || "";
 }
 
 function decodeMojibake(value) {
@@ -654,7 +658,7 @@ function wordsForSource(sourceWord) {
   if (generatedAnswerCache.has(sourceWord)) return generatedAnswerCache.get(sourceWord);
 
   const sourceCounts = letterCounts(sourceWord);
-  const matchingWords = WORD_BANK.filter((word) => {
+  const matchingWords = ANSWER_WORD_BANK.filter((word) => {
     return word.length >= 3 && word.length <= sourceWord.length && canBuildWord(word, sourceCounts);
   });
   const shortWords = matchingWords

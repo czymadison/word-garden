@@ -10,4 +10,4 @@ Progress and coins are saved in each browser with `localStorage`.
 
 ## Word Bank
 
-The generated word bank contains 20,000 unique English words selected from the local `en_US` Hunspell dictionary available on the development machine.
+The generated word bank contains 20,000 unique English puzzle source words with short Chinese meanings selected from ECDICT's MIT-licensed English-Chinese dictionary data. It also includes translated short answer words so each board can show richer subwords with Chinese meanings.
