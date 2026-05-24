@@ -7,6 +7,7 @@ const ANSWER_WORD_BANK = Array.isArray(window.WORD_GARDEN_ANSWER_WORDS)
 const GENERATED_CHINESE_MEANINGS = window.WORD_GARDEN_MEANINGS || {};
 const TOTAL_PUZZLES = WORD_BANK.length || 100000;
 const generatedAnswerCache = new Map();
+const MAX_WORDS_PER_PUZZLE = 9;
 const STARTING_COINS = 1000000;
 const GAME_STATE_KEY = "wordGardenGameState";
 const LEGACY_COMPLETED_PUZZLES_KEY = "wordGardenCompletedPuzzles";
@@ -635,7 +636,7 @@ function createPuzzle(id) {
     id,
     letters,
     theme: puzzleThemes[id % puzzleThemes.length],
-    words: rotateWords(template.words, id)
+    words: rotateWords(limitPuzzleWords(template.words, template.letters), id)
   };
 }
 
@@ -664,12 +665,23 @@ function wordsForSource(sourceWord) {
   const shortWords = matchingWords
     .filter((word) => word !== sourceWord)
     .sort((a, b) => a.length - b.length || a.localeCompare(b))
-    .slice(0, 8);
+    .slice(0, MAX_WORDS_PER_PUZZLE - 1);
 
-  const answers = [...new Set([...shortWords, sourceWord])]
-    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+  const answers = limitPuzzleWords([...shortWords, sourceWord], sourceWord);
   generatedAnswerCache.set(sourceWord, answers);
   return answers;
+}
+
+function limitPuzzleWords(words, sourceWord) {
+  const uniqueWords = [...new Set(words)];
+  const source = uniqueWords.includes(sourceWord) ? sourceWord : uniqueWords[uniqueWords.length - 1];
+  const smallerWords = uniqueWords
+    .filter((word) => word !== source)
+    .sort((a, b) => a.length - b.length || a.localeCompare(b))
+    .slice(0, MAX_WORDS_PER_PUZZLE - 1);
+
+  return [...smallerWords, source]
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
 }
 
 function canBuildWord(word, sourceCounts) {
@@ -787,7 +799,7 @@ function createPuzzleForValidation(id) {
   const template = puzzleTemplates[id % puzzleTemplates.length];
   return {
     letters: template.letters,
-    words: rotateWords(template.words, id)
+    words: rotateWords(limitPuzzleWords(template.words, template.letters), id)
   };
 }
 
