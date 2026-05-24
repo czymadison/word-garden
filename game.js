@@ -664,7 +664,7 @@ function wordsForSource(sourceWord) {
   const shortWords = matchingWords
     .filter((word) => word !== sourceWord)
     .sort((a, b) => a.length - b.length || a.localeCompare(b))
-    .slice(0, 9);
+    .slice(0, 8);
 
   const answers = [...new Set([...shortWords, sourceWord])]
     .sort((a, b) => a.length - b.length || a.localeCompare(b));
