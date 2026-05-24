@@ -335,6 +335,13 @@ button.primary {
   background: var(--leaf);
 }
 
+.exit-button {
+  color: #fff;
+  background: #8f3e3e;
+  border-color: #6f2d2d;
+  font-size: 0.85rem;
+}
+
 .game-shell {
   --layout-gap: clamp(6px, 1.3vh, 12px);
   --cell-size: 38px;
@@ -392,6 +399,25 @@ h1 {
   background: rgba(255, 255, 255, 0.78);
   text-align: center;
   box-shadow: var(--shadow);
+}
+
+.top-bar .exit-button {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 58px;
+  min-height: 34px;
+  padding: 6px 10px;
+  box-shadow: var(--shadow);
+}
+
+.top-bar .exit-button:hover {
+  transform: translateY(calc(-50% - 1px));
+}
+
+.top-bar .exit-button:active {
+  transform: translateY(-50%);
 }
 
 .score-card span {
@@ -551,17 +577,10 @@ h1 {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(5, minmax(46px, 64px));
+  grid-template-columns: repeat(4, minmax(42px, 56px));
   justify-content: center;
   gap: 7px;
   min-height: 0;
-}
-
-.controls .exit-button {
-  color: #fff;
-  background: #8f3e3e;
-  border-color: #6f2d2d;
-  font-size: 0.85rem;
 }
 
 .exit-screen {
@@ -624,7 +643,7 @@ h1 {
   }
 
   .controls {
-    grid-template-columns: repeat(5, minmax(42px, 56px));
+    grid-template-columns: repeat(4, minmax(38px, 50px));
     gap: 6px;
   }
 }
