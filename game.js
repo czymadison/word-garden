@@ -225,6 +225,7 @@ const boardWrap = document.querySelector(".board-wrap");
 const entryPanel = document.querySelector(".entry-panel");
 const wheelWrap = document.querySelector(".wheel-wrap");
 const controls = document.querySelector(".controls");
+const exitScreen = document.querySelector("#exit-screen");
 const wheel = document.querySelector("#letter-wheel");
 const currentWord = document.querySelector("#current-word");
 const message = document.querySelector("#message");
@@ -235,6 +236,7 @@ document.querySelector("#clear-btn").addEventListener("click", clearSelection);
 document.querySelector("#shuffle-btn").addEventListener("click", shuffleLetters);
 document.querySelector("#submit-btn").addEventListener("click", submitWord);
 document.querySelector("#hint-btn").addEventListener("click", useHint);
+document.querySelector("#exit-btn").addEventListener("click", exitGame);
 
 document.addEventListener("keydown", (event) => {
   const key = event.key.toUpperCase();
@@ -491,6 +493,22 @@ function nextPuzzle() {
   }
 
   startPuzzle();
+}
+
+function exitGame() {
+  clearSelection(false);
+  saveGameState();
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  window.close();
+  setTimeout(showExitScreen, 120);
+}
+
+function showExitScreen() {
+  shell.hidden = true;
+  exitScreen.hidden = false;
 }
 
 function setMessage(text) {
