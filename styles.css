@@ -551,10 +551,17 @@ h1 {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(5, minmax(42px, 56px));
+  grid-template-columns: repeat(5, minmax(46px, 64px));
   justify-content: center;
   gap: 7px;
   min-height: 0;
+}
+
+.controls .exit-button {
+  color: #fff;
+  background: #8f3e3e;
+  border-color: #6f2d2d;
+  font-size: 0.85rem;
 }
 
 .exit-screen {
@@ -617,7 +624,7 @@ h1 {
   }
 
   .controls {
-    grid-template-columns: repeat(5, minmax(38px, 50px));
+    grid-template-columns: repeat(5, minmax(42px, 56px));
     gap: 6px;
   }
 }
