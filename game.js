@@ -7,6 +7,7 @@ const ANSWER_WORD_BANK = Array.isArray(window.WORD_GARDEN_ANSWER_WORDS)
 const GENERATED_CHINESE_MEANINGS = window.WORD_GARDEN_MEANINGS || {};
 const TOTAL_PUZZLES = WORD_BANK.length || 100000;
 const generatedAnswerCache = new Map();
+const crosswordLayoutCache = new Map();
 const MAX_WORDS_PER_PUZZLE = 9;
 const STARTING_COINS = 1000000;
 const GAME_STATE_KEY = "wordGardenGameState";
@@ -278,51 +279,180 @@ function renderBoard() {
   const puzzle = currentPuzzle();
   if (!puzzle) return;
 
-  const words = puzzle.words
-    .slice()
-    .sort((a, b) => a.length - b.length || a.localeCompare(b));
+  const layout = crosswordLayoutForWords(puzzle.words);
+  board.style.setProperty("--grid-cols", layout.cols);
+  board.style.setProperty("--grid-rows", layout.rows);
+  const grid = document.createElement("div");
+  grid.className = "crossword-grid";
+  grid.style.setProperty("--grid-cols", layout.cols);
+  grid.style.setProperty("--grid-rows", layout.rows);
 
-  board.style.setProperty("--row-count", words.length);
-  board.style.setProperty("--max-word-length", Math.max(...words.map((word) => word.length)));
+  layout.cells.forEach((cellData) => {
+    const cell = document.createElement("div");
+    cell.className = "cell crossword-cell";
+    cell.style.gridColumn = `${cellData.col + 1}`;
+    cell.style.gridRow = `${cellData.row + 1}`;
+    cell.setAttribute("aria-label", "Hidden letter");
 
-  words.forEach((word) => {
-    const row = document.createElement("div");
-    row.className = "word-row";
-    row.dataset.word = word;
-
-    const cells = document.createElement("div");
-    cells.className = "word-cells";
-
-    for (let i = 0; i < word.length; i += 1) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      const isVisible = found.has(word) || revealed[word]?.has(i);
-      if (isVisible) {
-        cell.textContent = word[i];
-        cell.classList.add("revealed");
-      }
-      if (found.has(word)) {
-        makeSpeakable(cell, word, "en-US", `Say ${word}`, simpleSentenceForWord(word));
-      }
-      cells.appendChild(cell);
+    const visibleEntry = cellData.entries.find((entry) => found.has(entry.word) || revealed[entry.word]?.has(entry.index));
+    if (visibleEntry) {
+      cell.textContent = cellData.letter;
+      cell.classList.add("revealed");
+      cell.setAttribute("aria-label", cellData.letter);
     }
-
-    row.appendChild(cells);
-
-    const meaning = document.createElement("span");
-    meaning.className = "meaning";
-    const meaningText = found.has(word) ? meaningForWord(word) : "";
-    meaning.textContent = meaningText;
-    if (meaningText) {
-      makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`, simpleSentenceForMeaning(meaningText));
+    const spokenEntry = cellData.entries.find((entry) => found.has(entry.word));
+    if (spokenEntry) {
+      makeSpeakable(cell, spokenEntry.word, "en-US", `Say ${spokenEntry.word}`, simpleSentenceForWord(spokenEntry.word));
     }
-    meaning.setAttribute("aria-hidden", meaningText ? "false" : "true");
-    row.appendChild(meaning);
-
-    board.appendChild(row);
+    if (cellData.entries.length > 1) {
+      cell.classList.add("shared");
+    }
+    grid.appendChild(cell);
   });
 
+  const meanings = document.createElement("div");
+  meanings.className = "meaning-panel";
+  meanings.setAttribute("aria-label", "Found word meanings");
+
+  puzzle.words.forEach((word) => {
+    if (!found.has(word)) return;
+    const meaning = document.createElement("span");
+    meaning.className = "meaning-chip";
+    const meaningText = meaningForWord(word);
+    if (!meaningText) return;
+    meaning.textContent = meaningText;
+    makeSpeakable(meaning, meaningText, "zh-CN", `Say ${meaningText}`, simpleSentenceForMeaning(meaningText));
+    meanings.appendChild(meaning);
+  });
+
+  board.appendChild(grid);
+  board.appendChild(meanings);
+
   layoutGame();
+}
+
+function crosswordLayoutForWords(words) {
+  const key = words.slice().sort().join("|");
+  if (crosswordLayoutCache.has(key)) return crosswordLayoutCache.get(key);
+
+  const sortedWords = words.slice().sort((a, b) => b.length - a.length || a.localeCompare(b));
+  const placed = [];
+  const occupied = new Map();
+
+  placeWord(sortedWords[0], 0, 0, "across", placed, occupied);
+
+  sortedWords.slice(1).forEach((word) => {
+    const candidate = bestCrosswordCandidate(word, placed, occupied);
+    if (candidate) {
+      placeWord(word, candidate.row, candidate.col, candidate.direction, placed, occupied);
+      return;
+    }
+    const bounds = boundsForPlaced(placed);
+    placeWord(word, bounds.maxRow + 2, bounds.minCol, "across", placed, occupied);
+  });
+
+  const bounds = boundsForPlaced(placed);
+  const normalizedCells = new Map();
+  placed.forEach((entry) => {
+    for (let index = 0; index < entry.word.length; index += 1) {
+      const row = entry.row + (entry.direction === "down" ? index : 0) - bounds.minRow;
+      const col = entry.col + (entry.direction === "across" ? index : 0) - bounds.minCol;
+      const keyForCell = `${row},${col}`;
+      const cell = normalizedCells.get(keyForCell) || {
+        row,
+        col,
+        letter: entry.word[index],
+        entries: []
+      };
+      cell.entries.push({ word: entry.word, index });
+      normalizedCells.set(keyForCell, cell);
+    }
+  });
+
+  const layout = {
+    rows: bounds.maxRow - bounds.minRow + 1,
+    cols: bounds.maxCol - bounds.minCol + 1,
+    cells: [...normalizedCells.values()].sort((a, b) => a.row - b.row || a.col - b.col)
+  };
+  crosswordLayoutCache.set(key, layout);
+  return layout;
+}
+
+function bestCrosswordCandidate(word, placed, occupied) {
+  let best = null;
+  placed.forEach((entry) => {
+    for (let placedIndex = 0; placedIndex < entry.word.length; placedIndex += 1) {
+      for (let wordIndex = 0; wordIndex < word.length; wordIndex += 1) {
+        if (word[wordIndex] !== entry.word[placedIndex]) continue;
+        const direction = entry.direction === "across" ? "down" : "across";
+        const row = entry.row + (entry.direction === "down" ? placedIndex : 0) - (direction === "down" ? wordIndex : 0);
+        const col = entry.col + (entry.direction === "across" ? placedIndex : 0) - (direction === "across" ? wordIndex : 0);
+        if (!canPlaceWord(word, row, col, direction, occupied)) continue;
+        const score = crosswordCandidateScore(word, row, col, direction, occupied);
+        if (!best || score > best.score) {
+          best = { row, col, direction, score };
+        }
+      }
+    }
+  });
+  return best;
+}
+
+function canPlaceWord(word, row, col, direction, occupied) {
+  let overlaps = 0;
+  for (let index = 0; index < word.length; index += 1) {
+    const cellRow = row + (direction === "down" ? index : 0);
+    const cellCol = col + (direction === "across" ? index : 0);
+    const cell = occupied.get(`${cellRow},${cellCol}`);
+    if (cell && cell.letter !== word[index]) return false;
+    if (cell) overlaps += 1;
+  }
+  return overlaps > 0;
+}
+
+function crosswordCandidateScore(word, row, col, direction, occupied) {
+  let overlaps = 0;
+  const rows = [];
+  const cols = [];
+  for (let index = 0; index < word.length; index += 1) {
+    const cellRow = row + (direction === "down" ? index : 0);
+    const cellCol = col + (direction === "across" ? index : 0);
+    rows.push(cellRow);
+    cols.push(cellCol);
+    if (occupied.has(`${cellRow},${cellCol}`)) overlaps += 1;
+  }
+  const width = Math.max(...cols) - Math.min(...cols) + 1;
+  const height = Math.max(...rows) - Math.min(...rows) + 1;
+  return overlaps * 100 - width - height;
+}
+
+function placeWord(word, row, col, direction, placed, occupied) {
+  placed.push({ word, row, col, direction });
+  for (let index = 0; index < word.length; index += 1) {
+    const cellRow = row + (direction === "down" ? index : 0);
+    const cellCol = col + (direction === "across" ? index : 0);
+    const key = `${cellRow},${cellCol}`;
+    const cell = occupied.get(key) || { letter: word[index], entries: [] };
+    cell.entries.push({ word, index });
+    occupied.set(key, cell);
+  }
+}
+
+function boundsForPlaced(placed) {
+  const rows = [];
+  const cols = [];
+  placed.forEach((entry) => {
+    for (let index = 0; index < entry.word.length; index += 1) {
+      rows.push(entry.row + (entry.direction === "down" ? index : 0));
+      cols.push(entry.col + (entry.direction === "across" ? index : 0));
+    }
+  });
+  return {
+    minRow: Math.min(...rows),
+    maxRow: Math.max(...rows),
+    minCol: Math.min(...cols),
+    maxCol: Math.max(...cols)
+  };
 }
 
 function renderWheel() {
@@ -587,8 +717,7 @@ function layoutGame() {
     const puzzle = currentPuzzle();
     if (!puzzle) return;
 
-    const rowCount = puzzle.words.length;
-    const maxWordLength = Math.max(...puzzle.words.map((word) => word.length));
+    const layout = crosswordLayoutForWords(puzzle.words);
     const shellStyles = getComputedStyle(shell);
     const gap = parseFloat(shellStyles.gap) || 6;
     const usableHeight = Math.max(120, shell.clientHeight
@@ -597,11 +726,11 @@ function layoutGame() {
       - controls.offsetHeight
       - gap * 4);
     const usableWidth = boardWrap.clientWidth;
-    const meaningWidth = window.innerWidth <= 520 ? 48 : 58;
     const boardGap = 5;
-    const cellGap = 4;
+    const cellGap = 3;
     const isPhone = window.innerWidth <= 520;
-    const wheelHeightShare = isPhone ? 0.31 : 0.36;
+    const meaningHeight = found.size ? (isPhone ? 26 : 30) : 0;
+    const wheelHeightShare = isPhone ? 0.3 : 0.35;
     const wheelWidthShare = isPhone ? 0.47 : 0.52;
     const maxCell = isPhone ? 40 : 46;
     const maxWheel = isPhone ? 190 : 230;
@@ -612,20 +741,20 @@ function layoutGame() {
     let boardHeight = Math.max(70, usableHeight - wheelSize);
     let cellSize = Math.floor(Math.min(
       maxCell,
-      (usableWidth - meaningWidth - 12 - (maxWordLength - 1) * cellGap) / maxWordLength,
-      (boardHeight - (rowCount - 1) * boardGap) / rowCount
+      (usableWidth - (layout.cols - 1) * cellGap) / layout.cols,
+      (boardHeight - meaningHeight - (layout.rows - 1) * cellGap) / layout.rows
     ));
 
     cellSize = clamp(cellSize, 14, maxCell);
 
-    let neededBoardHeight = rowCount * cellSize + (rowCount - 1) * boardGap;
+    let neededBoardHeight = layout.rows * cellSize + (layout.rows - 1) * cellGap + meaningHeight;
     if (neededBoardHeight + wheelSize > usableHeight) {
       wheelSize = clamp(usableHeight - neededBoardHeight, 52, wheelSize);
     }
 
     if (neededBoardHeight + wheelSize > usableHeight) {
       boardHeight = Math.max(44, usableHeight - wheelSize);
-      cellSize = Math.floor((boardHeight - (rowCount - 1) * boardGap) / rowCount);
+      cellSize = Math.floor((boardHeight - meaningHeight - (layout.rows - 1) * cellGap) / layout.rows);
       cellSize = clamp(cellSize, 11, maxCell);
     }
 
